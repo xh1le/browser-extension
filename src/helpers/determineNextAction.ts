@@ -35,55 +35,145 @@ export async function determineNextAction(
   maxAttempts = 3,
   notifyError?: (error: string) => void
 ) {
-  const model = useAppState.getState().settings.selectedModel;
+  const state = useAppState.getState().settings;
+  const model = state.selectedModel;
   const prompt = formatPrompt(taskInstructions, previousActions, simplifiedDOM);
-  const openAIKey = useAppState.getState().settings.openAIKey;
-  const openPipeKey = useAppState.getState().settings.openPipeKey;
-  if (!openAIKey) {
-    notifyError?.('No OpenAI key found');
-    return null;
+  const openPipeKey = state.openPipeKey;
+
+  async function callOpenAI() {
+    const { openAIKey } = state;
+    if (!openAIKey) {
+      notifyError?.('No OpenAI key found');
+      return null;
+    }
+
+    const openai = new OpenAI({
+      apiKey: openAIKey,
+      dangerouslyAllowBrowser: true,
+      openpipe: {
+        apiKey: openPipeKey ?? undefined,
+      },
+    });
+
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: systemMessage,
+        },
+        { role: 'user', content: prompt },
+      ],
+      max_completion_tokens: 5000,
+      reasoning_effort: model === 'o1' ? 'low' : undefined,
+      temperature: model === 'o1' ? undefined : 0,
+      stop: ['</Action>'],
+      store: openPipeKey ? true : false,
+    });
+
+    return {
+      usage: completion.usage,
+      prompt,
+      response: completion.choices[0].message?.content?.trim() + '</Action>',
+    };
   }
 
-  const openai = new OpenAI({
-    apiKey: openAIKey,
-    dangerouslyAllowBrowser: true,
-    openpipe: {
-      apiKey: openPipeKey ?? undefined,
-    },
-  });
+  async function callGemini() {
+    const { geminiKey } = state;
+    if (!geminiKey) {
+      notifyError?.('No Gemini key found');
+      return null;
+    }
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          systemInstruction: {
+            role: 'user',
+            content: systemMessage,
+          },
+        }),
+      }
+    );
+    const data = await res.json();
+    return {
+      usage: undefined,
+      prompt,
+      response:
+        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() + '</Action>',
+    };
+  }
+
+  async function callNim() {
+    const { nimKey } = state;
+    if (!nimKey) {
+      notifyError?.('No NIM key found');
+      return null;
+    }
+    const res = await fetch(
+      'https://integrate.api.nvidia.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${nimKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemMessage },
+            { role: 'user', content: prompt },
+          ],
+        }),
+      }
+    );
+    const data = await res.json();
+    return {
+      usage: data.usage,
+      prompt,
+      response: data.choices?.[0]?.message?.content?.trim() + '</Action>',
+    };
+  }
+
+  async function callOllama() {
+    const { ollamaUrl } = state;
+    const res = await fetch(`${ollamaUrl || 'http://localhost:11434'}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt },
+        ],
+      }),
+    });
+    const data = await res.json();
+    return {
+      usage: data.usage,
+      prompt,
+      response: data.choices?.[0]?.message?.content?.trim() + '</Action>',
+    };
+  }
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
-      const completion = await openai.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: systemMessage,
-          },
-          { role: 'user', content: prompt },
-        ],
-        max_completion_tokens: 5000,
-        reasoning_effort: model === 'o1' ? 'low' : undefined,
-        temperature: model === 'o1' ? undefined : 0,
-        stop: ['</Action>'],
-        store: openPipeKey ? true : false,
-      });
-
-      return {
-        usage: completion.usage,
-        prompt,
-        response: completion.choices[0].message?.content?.trim() + '</Action>',
-      };
+      let result = null;
+      if (state.provider === 'openai') result = await callOpenAI();
+      else if (state.provider === 'gemini') result = await callGemini();
+      else if (state.provider === 'nim') result = await callNim();
+      else result = await callOllama();
+      if (result) return result;
     } catch (error: any) {
       console.log('determineNextAction error', error);
       if (error.message.includes('server error')) {
-        // Problem with the OpenAI API, try again
         if (notifyError) {
           notifyError(error.message);
         }
       } else {
-        // Another error, give up
         throw new Error(error.message);
       }
     }

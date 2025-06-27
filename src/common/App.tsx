@@ -2,13 +2,20 @@ import { Box, ChakraProvider, Heading, HStack } from '@chakra-ui/react';
 import React from 'react';
 import { useAppState } from '../state/store';
 import ModelDropdown from './ModelDropdown';
+import ProviderDropdown from './ProviderDropdown';
 import SetAPIKey from './SetAPIKey';
 import TaskUI from './TaskUI';
 import OptionsDropdown from './OptionsDropdown';
 import logo from '../assets/img/icon-128.png';
 
 const App = () => {
-  const openAIKey = useAppState((state) => state.settings.openAIKey);
+  const settings = useAppState((state) => state.settings);
+
+  const hasKey =
+    (settings.provider === 'openai' && settings.openAIKey) ||
+    (settings.provider === 'gemini' && settings.geminiKey) ||
+    (settings.provider === 'nim' && settings.nimKey) ||
+    (settings.provider === 'ollama' && settings.ollamaUrl);
 
   return (
     <ChakraProvider>
@@ -26,11 +33,12 @@ const App = () => {
             Taxy AI
           </Heading>
           <HStack spacing={2}>
+            <ProviderDropdown />
             <ModelDropdown />
             <OptionsDropdown />
           </HStack>
         </HStack>
-        {openAIKey ? <TaskUI /> : <SetAPIKey />}
+        {hasKey ? <TaskUI /> : <SetAPIKey />}
       </Box>
     </ChakraProvider>
   );

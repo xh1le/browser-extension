@@ -18,7 +18,7 @@ export default function TaskStatus() {
     'attaching-debugger': 'Attaching Debugger',
     'pulling-dom': 'Reading Page',
     'transforming-dom': 'Reading Page',
-    'performing-query': 'Running GPT',
+    'performing-query': 'Running LLM',
     'performing-action': 'Performing Action',
     waiting: 'Waiting',
   };

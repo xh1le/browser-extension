@@ -3,7 +3,7 @@
 # Taxy AI: Full Browser Automation
 [Waitlist](https://docs.google.com/forms/d/e/1FAIpQLScAFKI1fZ1cXhBmSp2HM93Jvuc8Jvrxh5iSbkKhtwKN-OHoTQ/viewform) | [Discord](https://discord.gg/DXaErbBc)
 
-Taxy uses GPT-4 to control your browser and perform repetitive actions on your behalf. Currently it allows you to define ad-hoc instructions. In the future it will also support saved and scheduled workflows.
+Taxy uses large language models to control your browser and perform repetitive actions on your behalf. Currently it allows you to define ad-hoc instructions. In the future it will also support saved and scheduled workflows.
 
 Taxy's current status is **research preview**. Many workflows fail or confuse the agent. If you'd like to hack on Taxy to make it better or test it on your own workflows, follow the instructions below to run it locally. If you'd like to know once it's available for wider usage, you can sign up for our [waitlist](https://docs.google.com/forms/d/e/1FAIpQLScAFKI1fZ1cXhBmSp2HM93Jvuc8Jvrxh5iSbkKhtwKN-OHoTQ/viewform).
 
@@ -52,13 +52,13 @@ Currently this extension is only available through this GitHub repo. We'll relea
 1. Once installed, the browser plugin will be available in two forms:
    1. As a Popup. Activate by pressing `cmd+shift+y` on mac or `ctrl+shift+y` on windows/linux, or by clicking the extension logo in your browser.
    2. As a devtools panel. Activate by first opening the browser's developer tools, then navigating to the `Taxy AI` panel.
-2. The next thing you need to do is create or access an existing [OpenAI API Key](https://platform.openai.com/account/api-keys) and paste it in the provided box. This key will be stored securely in your browser, and will not be uploaded to a third party.
+2. Provide the appropriate API key or service URL for your chosen provider in the extension popup. Keys are stored securely in your browser and are never uploaded to a third party.
 3. Finally, navigate to a webpage you want Taxy to act upon (for instance the [OpenAI playground](https://platform.openai.com/playground)) and start experimenting!
 
 ## How it Works - The Action Cycle
 
 1. Taxy runs a content script on the webpage to pull the entire DOM. It simplifies the html it receives to only include interactive or semantically important elements, like buttons or text. It assigns an id to each interactive element. It then "templatizes" the DOM to reduce the token count even further.
-2. Taxy sends the simplified DOM, along with the user's instructions, to a selected LLM (currently GPT-3.5 and GPT-4 are supported). Taxy informs the LLM of two methods to interact with the webpage:
+2. Taxy sends the simplified DOM, along with the user's instructions, to a selected LLM provider (OpenAI, Google Gemini, NVIDIA NIM, or Ollama are supported). Taxy informs the LLM of two methods to interact with the webpage:
    1. `click(id)` - click on the interactive element associated with that id
    2. `setValue(id, text)` - focus on a text input, clear its existing text, and type the specified text into that input
 3. When Taxy gets a completion from the LLM, it parses the response for an action. The action cycle will end at this stage if any of the following conditions are met:

@@ -38,6 +38,10 @@ export const useAppState = create<StoreType>()(
         },
         settings: {
           openAIKey: state.settings.openAIKey,
+          geminiKey: state.settings.geminiKey,
+          nimKey: state.settings.nimKey,
+          ollamaUrl: state.settings.ollamaUrl,
+          provider: state.settings.provider,
           selectedModel: state.settings.selectedModel,
         },
       }),
